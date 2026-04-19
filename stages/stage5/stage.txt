@@ -1,0 +1,7 @@
+bg=10,10,25
+player=480,620
+power=5
+
+# 중간 패턴
+enemy 300 50 40 18 stages\stage5\enemy5.txt
+enemy 660 50 40 18 stages\stage5\enemy5.txt

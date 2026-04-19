@@ -1,0 +1,12 @@
+laser aimed 10 1000 100 1
+wait 120
+jump 0
+
+# wait 60
+# shot circle 18 2.2
+# wait 60
+# shot aimed 3.0
+# wait 45
+# shot spiral 12 1.5 0.18
+# wait 60
+# laser aimed 6.0 220 80 10

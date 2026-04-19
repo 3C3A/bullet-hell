@@ -1,0 +1,104 @@
+loop -1
+
+# =========================
+# 1페이즈: 확산 + 압박
+# =========================
+
+set a 1
+
+for i 0 6 1
+    shot circle a 4
+    shot spiral a 1.5 0.12
+    add a a
+    wait 6
+endfor
+
+wait 20
+
+# =========================
+# 2페이즈: 삼중 조준 (플레이어 압박)
+# =========================
+
+for i 0 8 1
+    shot aimed 4
+    shot aimed 4 15
+    shot aimed 4 -15
+
+    shot spiral 6 1.2 0.08
+
+    wait 8
+endfor
+
+wait 20
+
+# =========================
+# 3페이즈: 랜덤 흔들림 (읽기 방해)
+# =========================
+
+for i 0 10 1
+    randset r -30 30
+    shot aimed 6 r
+    shot aimed 6 r
+    shot circle 12 2
+    waitrand 4 10
+endfor
+
+wait 30
+
+# =========================
+# 4페이즈: 압축 스파이럴 (고난도)
+# =========================
+
+for i 0 20 1
+    shot spiral 8 2.0 0.25
+    shot spiral 8 2.0 -0.25
+    wait 3
+endfor
+
+wait 30
+
+# =========================
+# 5페이즈: 레이저 트랩
+# =========================
+
+for i 0 4 1
+    laser aimed 8 800 120 8
+    wait 20
+endfor
+
+# 레이저 + 탄막 동시
+for i 0 6 1
+    laser aimed 6 600 90 6
+    shot circle 16 2
+    wait 10
+endfor
+
+wait 40
+
+# =========================
+# 6페이즈: 마무리 난사
+# =========================
+
+for i 0 12 1
+    shot aimed 8
+    shot aimed 8 20
+    shot aimed 8 -20
+
+    shot spiral 12 2.2 0.2
+    shot circle 24 1.8
+
+    wait 6
+endfor
+
+wait 60
+
+endloop
+
+# wait 60
+# shot circle 18 2.2
+# wait 60
+# shot aimed 3.0
+# wait 45
+# shot spiral 12 1.5 0.18
+# wait 60
+# laser aimed 6.0 220 80 10

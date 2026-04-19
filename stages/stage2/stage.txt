@@ -1,0 +1,7 @@
+bg=10,10,25
+player=480,620
+power=2
+
+# 잡몹 웨이브 2
+enemy 300 140 25 14 stages\stage2\enemy2.txt
+enemy 660 140 25 14 stages\stage2\enemy2.txt

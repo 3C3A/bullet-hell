@@ -1,0 +1,6 @@
+bg=10,10,25
+player=480,620
+power=3
+
+# 중간 패턴
+enemy 480 120 40 18 stages\stage3\enemy3.txt stages\stage3\fairy.png

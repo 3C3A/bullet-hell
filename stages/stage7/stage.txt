@@ -1,0 +1,6 @@
+bg=10,10,25
+player=480,620
+power=7
+
+# 보스
+enemy 480 120 200 24 stages\stage7\enemy7.txt stages\stage7\fairy.png
