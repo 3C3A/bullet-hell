@@ -458,6 +458,18 @@ struct FrameBuffer {
         }
     }
 
+    void blitTiled(const Sprite& s) {
+        if (s.empty()) return;
+        for (int y = 0; y < SCREEN_H; ++y) {
+            int sy = y % s.h;
+            for (int x = 0; x < SCREEN_W; ++x) {
+                int sx = x % s.w;
+                uint32_t p = s.px[(size_t)sy * (size_t)s.w + (size_t)sx];
+                blend(x, y, p);
+            }
+        }
+    }
+
     void present(HWND hwnd, const std::string& hud) {
         if (!hwnd) return;
         HDC dc = GetDC(hwnd);
@@ -1815,6 +1827,7 @@ static std::vector<Bullet> gBullets(MAX_BULLETS);
 static std::vector<Laser> gLasers(MAX_LASERS);
 static std::vector<Enemy> gEnemies(MAX_ENEMIES);
 static uint32_t gBgColor = rgb(10, 10, 20);
+static Sprite gStageBg;
 static bool gGameOver = false;
 static int gStageIndex = 1;
 static float gGlobalTime = 0.0f;
@@ -1834,6 +1847,7 @@ static void clearGameObjects() {
 }
 static bool loadStage(int stageIndex) {
     clearGameObjects();
+    gStageBg = Sprite();
     gStageIndex = clampi(stageIndex, 0, 99);
 
     std::ostringstream oss;
@@ -1853,7 +1867,10 @@ static bool loadStage(int stageIndex) {
         auto t = splitTokens(line);
         if (t.empty()) continue;
 
-        if (t[0] == "bg" && t.size() >= 2) {
+        if ((t[0] == "bgimg" || t[0] == "bgimage" || t[0] == "background") && t.size() >= 2) {
+            loadSpriteFile(t[1], gStageBg);
+        }
+        else if (t[0] == "bg" && t.size() >= 2) {
             gBgColor = parseColor(t[1], gBgColor);
         }
         else if (t[0] == "enemy" && t.size() >= 6 && enemyIndex < MAX_ENEMIES) {
@@ -2374,6 +2391,7 @@ static std::string makeHUD() {
 }
 static void renderFrame(HWND hwnd) {
     gFrame.clear(gBgColor);
+    gFrame.blitTiled(gStageBg);
     renderBossHPBar();   // 추가
     renderBombShape();
     renderEnemies();
