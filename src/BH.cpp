@@ -24,7 +24,7 @@
 static const int SCREEN_W = 960;
 static const int SCREEN_H = 720;
 static const float FIXED_DT = 1.0f / 60.0f;
-static const int MAX_BULLETS = 5000;
+static const int MAX_BULLETS = 65535;
 static const int MAX_PLAYER_SHOTS = 512;
 static const int MAX_LASERS = 128;
 static const int MAX_ENEMIES = 64;
@@ -141,10 +141,11 @@ static std::vector<std::string> splitTokens(const std::string& s) {
 static bool startsWith(const std::string& s, const std::string& p) { return s.rfind(p, 0) == 0; }
 
 static bool isAllowedGamePath(const std::string& p) {
-    return startsWith(p, "stages/") ||
-           startsWith(p, "ply/") ||
-           startsWith(p, "scripts/") ||
-           startsWith(p, "assets/");
+    std::string lower = toLowerCopy(p);
+    return startsWith(lower, "stages/") ||
+           startsWith(lower, "ply/") ||
+           startsWith(lower, "scripts/") ||
+           startsWith(lower, "assets/");
 }
 
 static bool isSafeRelativePath(std::string p) {
@@ -265,7 +266,8 @@ static bool endsWithIgnoreCase(const std::string& s, const std::string& suffix) 
 static bool loadPNG(const std::string& rawPath, Sprite& out) {
     out = Sprite();
     std::string path = trim(rawPath);
-    if (!isSafeRelativePath(path) || !endsWithIgnoreCase(path, ".png")) return false;
+    if (!isSafeRelativePath(path)) return false;
+    if (!(endsWithIgnoreCase(path, ".png") || endsWithIgnoreCase(path, ".jpg") || endsWithIgnoreCase(path, ".jpeg"))) return false;
     if (!safeFileSize(path, 64u * 1024u * 1024u)) return false;
 
     std::wstring wpath;
@@ -341,7 +343,7 @@ static bool loadPNG(const std::string& rawPath, Sprite& out) {
 }
 
 static bool loadSpriteFile(const std::string& path, Sprite& out) {
-    if (endsWithIgnoreCase(path, ".png")) return loadPNG(path, out);
+    if (endsWithIgnoreCase(path, ".png") || endsWithIgnoreCase(path, ".jpg") || endsWithIgnoreCase(path, ".jpeg")) return loadPNG(path, out);
     if (endsWithIgnoreCase(path, ".bmp")) return loadBMP(path, out);
     return loadBMP(path, out);
 }
@@ -860,7 +862,7 @@ private:
             return std::make_unique<NumberNode>((float)v);
         }
         if (isIdentStart(s[pos])) {
-            std::string name = parseIdentifier();
+            std::string name = parseQualifiedIdentifier();
             skipSpaces();
             if (pos < s.size() && s[pos] == '(') {
                 ++pos;
@@ -891,6 +893,19 @@ private:
         skipSpaces();
         size_t start = pos;
         while (pos < s.size() && isIdentChar(s[pos])) ++pos;
+        return s.substr(start, pos - start);
+    }
+
+    std::string parseQualifiedIdentifier() {
+        skipSpaces();
+        size_t start = pos;
+        if (pos >= s.size() || !isIdentStart(s[pos])) return "";
+        while (pos < s.size() && isIdentChar(s[pos])) ++pos;
+
+        while (pos + 1 < s.size() && s[pos] == '.' && isIdentStart(s[pos + 1])) {
+            ++pos;
+            while (pos < s.size() && isIdentChar(s[pos])) ++pos;
+        }
         return s.substr(start, pos - start);
     }
 };
@@ -1056,6 +1071,9 @@ private:
 
     float builtinVar(const std::string& rawName, const PatternSystemRuntimeView& view) const {
         std::string name = toLowerCopy(trim(rawName));
+        if (startsWith(name, "status.")) name = name.substr(7);
+        if (startsWith(name, "math.")) name = name.substr(5);
+
         if (name == "x" || name == "enemyx" || name == "enemy_x" || name == "posx" || name == "px") return view.enemyPos.x;
         if (name == "y" || name == "enemyy" || name == "enemy_y" || name == "posy" || name == "py") return view.enemyPos.y;
         if (name == "playerx" || name == "player_x") return view.playerPos.x;
@@ -1080,11 +1098,26 @@ private:
     float resolveVar(const std::string& name, const PatternSystemRuntimeView& view) const {
         auto it = vars_.find(name);
         if (it != vars_.end()) return it->second;
+
+        std::string lower = toLowerCopy(trim(name));
+        if (startsWith(lower, "status.") || startsWith(lower, "math.")) {
+            size_t dot = name.find('.');
+            if (dot != std::string::npos && dot + 1 < name.size()) {
+                std::string stripped = name.substr(dot + 1);
+                auto it2 = vars_.find(stripped);
+                if (it2 != vars_.end()) return it2->second;
+            }
+        }
+
         return builtinVar(name, view);
     }
 
     float builtinFunc(const std::string& rawName, const std::vector<float>& args) {
         std::string name = toLowerCopy(trim(rawName));
+        if (startsWith(name, "math.")) name = name.substr(5);
+        if (startsWith(name, "status.")) name = name.substr(7);
+        if (name == "random") name = "rand";
+
         if (name == "rand") {
             if (args.empty()) return randomFloat(0.0f, 1.0f);
             if (args.size() == 1) return randomFloat(0.0f, args[0]);
@@ -1924,7 +1957,6 @@ static bool loadPlayerAssets() {
 
 static PlayerShot* allocPlayerShot() { for (auto& s : gPlayerShots) if (!s.alive) return &s; return nullptr; }
 static Bullet* allocBullet() { for (auto& b : gBullets) if (!b.alive) return &b; return nullptr; }
-static Laser* allocLaser() { for (auto& l : gLasers) if (!l.alive) return &l; return nullptr; }
 
 static void spawnPlayerShots() {
     int count = std::max(1, gPlayer.profile.shotCount + (gPlayer.powerLevel / 2));
@@ -1976,9 +2008,19 @@ static void shootSpiral(const Vec2& pos, int count, float speed, float phaseStep
     }
     spiralPhase += phaseStep;
 }
+static Laser* allocLaser() {
+    for (auto& l : gLasers) {
+        if (!l.alive) return &l;
+    }
+
+    gLasers.emplace_back();
+    return &gLasers.back();
+}
+
 static void shootLaser(const Vec2& origin, float angleDeg, float growSpeed, float maxLen, int duration, float width, uint32_t color = rgb(120, 255, 120)) {
     Laser* l = allocLaser();
     if (!l) return;
+
     l->alive = true;
     l->origin = origin;
     l->angle = deg2rad(angleDeg);
